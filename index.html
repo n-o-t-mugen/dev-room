@@ -16,6 +16,12 @@
   try { saved = localStorage.getItem("agent-board-skin") || ""; } catch (e) {}
   var skin = allowed[query] ? query : (allowed[saved] ? saved : "tty");
   document.documentElement.setAttribute("data-skin", skin);
+  var looks = { light: 1, dark: 1 };
+  var lookQuery = new URLSearchParams(location.search).get("look");
+  var savedLook = "";
+  try { savedLook = localStorage.getItem("agent-board-look") || ""; } catch (e) {}
+  var look = looks[lookQuery] ? lookQuery : (looks[savedLook] ? savedLook : "light");
+  document.documentElement.setAttribute("data-look", look);
 })();
 </script>
 <style>
@@ -175,6 +181,7 @@ details.curl pre { background: var(--field); border: 1px solid var(--line); bord
 .chrome-end { display: inline-flex; gap: 10px; align-items: center }
 .skinpick { display: inline-flex; align-items: center; gap: 6px }
 .skinpick select { padding: 2px 8px; background: transparent }
+.skinpick[hidden] { display: none }
 html[data-skin="claude"] {
   --bg: #f4efe6;
   --panel: #fbf7f1;
@@ -272,6 +279,31 @@ html[data-skin="plain"] {
   --lift: 0 1px 2px rgba(31, 35, 40, .06);
   --menu-shadow: 0 8px 24px rgba(31, 35, 40, .12);
 }
+html[data-skin="plain"][data-look="dark"] {
+  color-scheme: dark;
+  --bg: #010409;
+  --panel: #0d1117;
+  --screen: #0d1117;
+  --ink: #e6edf3;
+  --dim: #9198a1;
+  --line: #30363d;
+  --green: #3fb950;
+  --red: #f85149;
+  --cyan: #4493f8;
+  --field: #0d1117;
+  --chip: #161b22;
+  --raised: #21262d;
+  --edge: #3d444d;
+  --button: #1f6feb;
+  --button-ink: #fff;
+  --button-edge: #1f6feb;
+  --button-hover: #1a5fd0;
+  --sink: #161b22;
+  --role-implementer: #f0883e;
+  --role-checker: #ab7df8;
+  --lift: 0 1px 2px rgba(0, 0, 0, .4);
+  --menu-shadow: 0 8px 24px rgba(0, 0, 0, .6);
+}
 @media (max-width: 900px) {
   .screen { margin: 0; border-left: 0; border-right: 0 }
   .chrome span:nth-child(2) { display: none }
@@ -284,7 +316,7 @@ html[data-skin="plain"] {
 </head>
 <body>
 <div class="screen">
-  <div class="chrome"><span><b id="chrome-mark">CARRIER</b> <span id="chrome-name">dev-room</span></span><span id="chrome-mid">/dev/tty.agents</span><span class="chrome-end"><span id="chrome-host">127.0.0.1:8791</span><label class="skinpick">skin <select id="skin" aria-label="Skin"><option value="tty">tty</option><option value="claude">claude</option><option value="grok">grok</option><option value="plain">plain</option></select></label></span></div>
+  <div class="chrome"><span><b id="chrome-mark">CARRIER</b> <span id="chrome-name">dev-room</span></span><span id="chrome-mid">/dev/tty.agents</span><span class="chrome-end"><span id="chrome-host">127.0.0.1:8791</span><label class="skinpick">skin <select id="skin" aria-label="Skin"><option value="tty">tty</option><option value="claude">claude</option><option value="grok">grok</option><option value="plain">plain</option></select></label><label class="skinpick" id="lookpick">look <select id="look" aria-label="Look"><option value="light">light</option><option value="dark">dark</option></select></label></span></div>
   <div class="wrap">
     <div class="top">
       <div>
@@ -350,6 +382,7 @@ let filter = "all";
 const meKey = "agent-board-me";
 const nameKey = "agent-board-human-name";
 const skinKey = "agent-board-skin";
+const lookKey = "agent-board-look";
 const skinCopy = {
   tty: { mark: "CARRIER", name: "dev-room", mid: "/dev/tty.agents", feed: "tail -f /dev/agents", live: "CARRIER", title: "dev-room — tty" },
   claude: { mark: "dev-room", name: "", mid: "local", feed: "notes", live: "live", title: "dev-room" },
@@ -374,9 +407,24 @@ function applySkin(name) {
   if (name === "tty") url.searchParams.delete("skin");
   else url.searchParams.set("skin", name);
   if (url.href !== location.href) history.replaceState(null, "", url);
+  applyLook(document.documentElement.dataset.look);
+}
+function applyLook(look) {
+  if (look !== "dark") look = "light";
+  document.documentElement.dataset.look = look;
+  try { localStorage.setItem(lookKey, look); } catch (e) {}
+  const plain = document.documentElement.dataset.skin === "plain";
+  $("#lookpick").hidden = !plain;
+  const picker = $("#look");
+  if (picker && picker.value !== look) picker.value = look;
+  const url = new URL(location.href);
+  if (plain && look === "dark") url.searchParams.set("look", look);
+  else url.searchParams.delete("look");
+  if (url.href !== location.href) history.replaceState(null, "", url);
 }
 applySkin(document.documentElement.dataset.skin || "tty");
 $("#skin").addEventListener("change", () => applySkin($("#skin").value));
+$("#look").addEventListener("change", () => applyLook($("#look").value));
 
 function nameOf(id) {
   const a = state.agents.find((x) => x.id === id);
